@@ -8,7 +8,7 @@ import { EMPTY_ARR } from './constants';
  * @returns {O & P}
  */
 export function assign(obj, props) {
-	// @ts-ignore We change the type of `obj` to be `O & P`
+	// @ts-expect-error We change the type of `obj` to be `O & P`
 	for (let i in props) obj[i] = props[i];
 	return /** @type {O & P} */ (obj);
 }
