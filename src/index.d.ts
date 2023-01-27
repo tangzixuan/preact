@@ -278,7 +278,6 @@ interface ContainerNode {
 	readonly nodeType: number;
 	readonly parentNode: ContainerNode | null;
 	readonly firstChild: ContainerNode | null;
-	readonly nextSibling: ChildNode | null;
 	readonly childNodes: ArrayLike<ContainerNode>;
 
 	insertBefore(node: ContainerNode, child: ContainerNode | null): ContainerNode;
