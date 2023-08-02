@@ -10,12 +10,19 @@ import options from '../options';
  * @param {boolean} isSvg Whether or not this node is an SVG node
  * @param {boolean} hydrate Whether or not we are in hydration mode
  */
-export function diffProps(dom, newProps, oldProps, isSvg, hydrate) {
+export function diffProps(
+	dom,
+	newProps,
+	oldProps,
+	isSvg,
+	isCustomElement,
+	hydrate
+) {
 	let i;
 
 	for (i in oldProps) {
 		if (i !== 'children' && i !== 'key' && !(i in newProps)) {
-			setProperty(dom, i, null, oldProps[i], isSvg);
+			setProperty(dom, i, null, oldProps[i], isSvg, isCustomElement);
 		}
 	}
 
@@ -28,7 +35,7 @@ export function diffProps(dom, newProps, oldProps, isSvg, hydrate) {
 			i !== 'checked' &&
 			oldProps[i] !== newProps[i]
 		) {
-			setProperty(dom, i, newProps[i], oldProps[i], isSvg);
+			setProperty(dom, i, newProps[i], oldProps[i], isSvg, isCustomElement);
 		}
 	}
 }
@@ -52,8 +59,16 @@ function setStyle(style, key, value) {
  * @param {*} value The value to set the property to
  * @param {*} oldValue The old value the property had
  * @param {boolean} isSvg Whether or not this DOM node is an SVG node or not
+ * @param {boolean} isCustomElement Whether or not this DOM node is a custom-element node or not
  */
-export function setProperty(dom, name, value, oldValue, isSvg) {
+export function setProperty(
+	dom,
+	name,
+	value,
+	oldValue,
+	isSvg,
+	isCustomElement
+) {
 	let useCapture;
 
 	o: if (name === 'style') {
@@ -82,7 +97,11 @@ export function setProperty(dom, name, value, oldValue, isSvg) {
 		}
 	}
 	// Benchmark for comparison: https://esbench.com/bench/574c954bdb965b9a00965ac6
-	else if (name[0] === 'o' && name[1] === 'n') {
+	else if (
+		name[0] === 'o' &&
+		name[1] === 'n' &&
+		(!isCustomElement || (isCustomElement && name[2] === name[2].toUpperCase()))
+	) {
 		useCapture = name !== (name = name.replace(/Capture$/, ''));
 
 		// Infer correct casing for DOM built-in events:

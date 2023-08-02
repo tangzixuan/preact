@@ -436,7 +436,14 @@ function diffElementNodes(
 			}
 		}
 
-		diffProps(dom, newProps, oldProps, isSvg, isHydrating);
+		diffProps(
+			dom,
+			newProps,
+			oldProps,
+			isSvg,
+			nodeType && nodeType.indexOf('-') > -1,
+			isHydrating
+		);
 
 		// If the new vnode didn't have dangerouslySetInnerHTML, diff its children
 		if (newHtml) {
