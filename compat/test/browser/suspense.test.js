@@ -105,6 +105,7 @@ describe('suspense', () => {
 	});
 
 	it('should reset hooks of components', () => {
+		/** @type {(v) => void} */
 		let set;
 		const LazyComp = ({ name }) => <div>Hello from {name}</div>;
 
@@ -155,6 +156,7 @@ describe('suspense', () => {
 	});
 
 	it('should call effect cleanups', () => {
+		/** @type {(v) => void} */
 		let set;
 		const effectSpy = sinon.spy();
 		const layoutEffectSpy = sinon.spy();
@@ -296,6 +298,25 @@ describe('suspense', () => {
 		return resolve().then(() => {
 			rerender();
 			expect(ref.current.constructor).to.equal(LazyComp);
+		});
+	});
+
+	it('should not duplicate DOM when suspending while rendering', () => {
+		scratch.innerHTML = '<div>Hello</div>';
+
+		const [Lazy, resolve] = createLazy();
+		render(
+			<Suspense>
+				<Lazy />
+			</Suspense>,
+			scratch
+		);
+		rerender(); // Flush rerender queue to mimic what preact will really do
+		expect(scratch.innerHTML).to.equal('');
+
+		return resolve(() => <div>Hello</div>).then(() => {
+			rerender();
+			expect(scratch.innerHTML).to.equal('<div>Hello</div>');
 		});
 	});
 
@@ -1355,6 +1376,7 @@ describe('suspense', () => {
 	it('should un-suspend when suspender unmounts', () => {
 		const [Suspender, suspend] = createSuspender(() => <div>Suspender</div>);
 
+		/** @type {() => void} */
 		let hide;
 
 		class Conditional extends Component {
@@ -1408,6 +1430,7 @@ describe('suspense', () => {
 			<div>Suspender 2</div>
 		));
 
+		/** @type {() => void} */
 		let hide, resolve;
 
 		class Conditional extends Component {
@@ -1476,7 +1499,10 @@ describe('suspense', () => {
 			return <div>{`Lazy ${value}`}</div>;
 		}
 
-		let hide, setValue;
+		/** @type {() => void} */
+		let hide,
+		/** @type {(v) => void} */
+		setValue;
 
 		class Conditional extends Component {
 			constructor(props) {
@@ -1541,6 +1567,7 @@ describe('suspense', () => {
 	it('should allow resolve suspense promise after unmounts', async () => {
 		const [Suspender, suspend] = createSuspender(() => <div>Suspender</div>);
 
+		/** @type {() => void} */
 		let hide, resolve;
 
 		class Conditional extends Component {
@@ -1588,6 +1615,7 @@ describe('suspense', () => {
 	it('should support updating state while suspended', async () => {
 		const [Suspender, suspend] = createSuspender(() => <div>Suspender</div>);
 
+		/** @type {() => void} */
 		let increment;
 
 		class Updater extends Component {
@@ -1653,6 +1681,7 @@ describe('suspense', () => {
 
 		Suspender.prototype.componentWillUnmount = cWUSpy;
 
+		/** @type {() => void} */
 		let hide;
 
 		let suspender = null;
@@ -1748,6 +1777,7 @@ describe('suspense', () => {
 			}
 		}
 
+		/** @type {Suspender} */
 		let suspender;
 		class Suspender extends Component {
 			constructor(props) {
@@ -1874,6 +1904,7 @@ describe('suspense', () => {
 			return content;
 		}
 
+		/** @type {Component} */
 		let parent;
 		class Parent extends Component {
 			constructor(props) {

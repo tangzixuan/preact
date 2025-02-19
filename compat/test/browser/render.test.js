@@ -263,7 +263,13 @@ describe('compat render', () => {
 			/>,
 			scratch
 		);
-		expect(sortAttributes(scratch.innerHTML)).to.equal(
+
+		let html = sortAttributes(scratch.innerHTML);
+		if (/Trident/.test(navigator.userAgent)) {
+			html = html.toLowerCase();
+		}
+
+		expect(html).to.equal(
 			'<link as="image" href="preact.jpg" imagesrcset="preact_400px.jpg 400w" rel="preload">'
 		);
 	});
@@ -493,6 +499,16 @@ describe('compat render', () => {
 		expect(updateSpy).to.not.be.calledOnce;
 	});
 
+	it('should support the translate attribute w/ yes as a string', () => {
+		render(<b translate="yes">Bold</b>, scratch);
+		expect(scratch.innerHTML).to.equal('<b translate="yes">Bold</b>');
+	});
+
+	it('should support the translate attribute w/ no as a string', () => {
+		render(<b translate="no">Bold</b>, scratch);
+		expect(scratch.innerHTML).to.equal('<b translate="no">Bold</b>');
+	});
+
 	it('should support false aria-* attributes', () => {
 		render(<div aria-checked={false} />, scratch);
 		expect(scratch.firstChild.getAttribute('aria-checked')).to.equal('false');
@@ -525,6 +541,59 @@ describe('compat render', () => {
 			</Ctx.Provider>,
 			scratch
 		);
+
+		expect(scratch.textContent).to.equal('foo');
+	});
+
+	it('should allow context as a component', () => {
+		const Context = createContext(null);
+		const CONTEXT = { a: 'a' };
+
+		let receivedContext;
+
+		class Inner extends Component {
+			render(props) {
+				return <div>{props.a}</div>;
+			}
+		}
+
+		sinon.spy(Inner.prototype, 'render');
+
+		render(
+			<Context value={CONTEXT}>
+				<div>
+					<Context.Consumer>
+						{data => {
+							receivedContext = data;
+							return <Inner {...data} />;
+						}}
+					</Context.Consumer>
+				</div>
+			</Context>,
+			scratch
+		);
+
+		// initial render does not invoke anything but render():
+		expect(Inner.prototype.render).to.have.been.calledWithMatch(CONTEXT);
+		expect(receivedContext).to.equal(CONTEXT);
+		expect(scratch.innerHTML).to.equal('<div><div>a</div></div>');
+	});
+
+	it("should support recoils's usage of __SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED", () => {
+		// Simplified version of: https://github.com/facebookexperimental/Recoil/blob/c1b97f3a0117cad76cbc6ab3cb06d89a9ce717af/packages/recoil/core/Recoil_ReactMode.js#L36-L44
+		function useStateWrapper(init) {
+			const { ReactCurrentDispatcher } =
+				React.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED;
+			const dispatcher = ReactCurrentDispatcher.current;
+			return dispatcher.useState(init);
+		}
+
+		function Foo() {
+			const [value] = useStateWrapper('foo');
+			return <div>{value}</div>;
+		}
+
+		React.render(<Foo />, scratch);
 
 		expect(scratch.textContent).to.equal('foo');
 	});

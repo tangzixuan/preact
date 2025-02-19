@@ -6,7 +6,8 @@ import {
 	FunctionalComponent,
 	AnyComponent,
 	h,
-	createRef
+	createRef,
+	JSX
 } from '../../';
 
 interface DummyProps {
@@ -97,6 +98,7 @@ function createRootFragment(parent: Element, replaceNode: Element | Element[]) {
 		parentNode: parent,
 		firstChild: replaceNodes[0],
 		childNodes: replaceNodes,
+		contains: (c: Node) => parent.contains(c),
 		insertBefore: insert,
 		appendChild: (c: Node) => insert(c, null),
 		removeChild: function (c: Node) {
@@ -137,22 +139,21 @@ const UseOfComponentWithChildren = () => {
 	);
 };
 
-// TODO: make this work
-// const DummyChildren: FunctionalComponent = ({ children }) => {
-// 	return children;
-// };
+const DummyChildren: FunctionalComponent = ({ children }) => {
+	return children;
+};
 
-// function ReturnChildren(props: { children: preact.ComponentChildren }) {
-// 	return props.children;
-// }
+function ReturnChildren(props: { children: preact.ComponentChildren }) {
+	return props.children;
+}
 
-// function TestUndefinedChildren() {
-// 	return (
-// 		<ReturnChildren>
-// 			<ReturnChildren>Hello</ReturnChildren>
-// 		</ReturnChildren>
-// 	);
-// }
+function TestUndefinedChildren() {
+	return (
+		<ReturnChildren>
+			<ReturnChildren>Hello</ReturnChildren>
+		</ReturnChildren>
+	);
+}
 
 // using ref and or jsx
 class ComponentUsingRef extends Component<any, any> {
@@ -350,6 +351,10 @@ const acceptsStringAsLength = <div style={{ marginTop: '20px' }} />;
 
 const ReturnNull: FunctionalComponent = () => null;
 
+// Should accept arbitrary properties outside of JSX.HTMLAttributes
+h('option', { x: 'foo' });
+createElement('option', { value: 'foo' });
+
 // Refs should work on elements
 const ref = createRef<HTMLDivElement>();
 createElement('div', { ref: ref }, 'hi');
@@ -362,7 +367,42 @@ createElement(RefComponentTest, { ref: functionRef }, 'hi');
 h(RefComponentTest, { ref: functionRef }, 'hi');
 
 // Should accept onInput
-const onInput = (e: h.JSX.TargetedEvent<HTMLInputElement>) => {};
+const onInput = (e: h.JSX.TargetedInputEvent<HTMLInputElement>) => {};
 <input onInput={onInput} />;
+<input onInput={e => e.currentTarget.value} />;
 createElement('input', { onInput: onInput });
 h('input', { onInput: onInput });
+
+// Should accept onBeforeInput
+const onBeforeInput = (e: h.JSX.TargetedInputEvent<HTMLInputElement>) => {};
+<input onBeforeInput={e => e.currentTarget.value} />;
+createElement('input', { onBeforeInput: onBeforeInput });
+h('input', { onBeforeInput: onBeforeInput });
+
+// Should accept onSubmit
+const onSubmit = (e: h.JSX.TargetedSubmitEvent<HTMLFormElement>) => {};
+<form onSubmit={e => e.currentTarget.elements} />;
+createElement('form', { onSubmit: onSubmit });
+h('form', { onSubmit: onSubmit });
+
+// Should accept onToggle
+const onToggle = (e: h.JSX.TargetedToggleEvent<HTMLDetailsElement>) => {};
+<dialog onToggle={(e) => ({ newState: e.newState, oldState: e.oldState }) } />;
+createElement('dialog', { onToggle: onToggle });
+h('dialog', { onToggle: onToggle });
+
+// Should default to correct event target element for the attribute interface
+h<JSX.InputHTMLAttributes>('input', { onClick: e => e.currentTarget.capture });
+createElement<JSX.InputHTMLAttributes>('input', { onClick: e => e.currentTarget.capture });
+<input onClick={e => e.currentTarget.capture} />;
+
+function Checkbox({ onChange }: JSX.HTMLAttributes<HTMLInputElement>) {
+	function handleChange(
+		this: void,
+		event: JSX.TargetedEvent<HTMLInputElement>
+	) {
+		onChange?.call(this, event);
+	}
+
+	return <input onChange={handleChange} />;
+}

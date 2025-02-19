@@ -1,4 +1,5 @@
-import { createElement, hydrate, Fragment } from 'preact';
+import { createElement, hydrate, Fragment, Component } from 'preact';
+import { setupRerender } from 'preact/test-utils';
 import {
 	setupScratch,
 	teardown,
@@ -28,6 +29,7 @@ describe('hydrate()', () => {
 	let resetRemove;
 	let resetSetAttribute;
 	let resetRemoveAttribute;
+	let rerender;
 
 	before(() => {
 		resetAppendChild = logCall(Element.prototype, 'appendChild');
@@ -48,13 +50,27 @@ describe('hydrate()', () => {
 	});
 
 	beforeEach(() => {
+		rerender = setupRerender();
 		scratch = setupScratch();
 		attributesSpy = spyOnElementAttributes();
+		clearLog();
 	});
 
 	afterEach(() => {
 		teardown(scratch);
-		clearLog();
+	});
+
+	// Test for preactjs/preact#4340
+	it('should respect defaultValue in hydrate', () => {
+		scratch.innerHTML = '<input value="foo">';
+		hydrate(<input defaultValue="foo" />, scratch);
+		expect(scratch.firstChild.value).to.equal('foo');
+	});
+
+	it('should respect defaultChecked in hydrate', () => {
+		scratch.innerHTML = '<input checked="true">';
+		hydrate(<input defaultChecked />, scratch);
+		expect(scratch.firstChild.checked).to.equal(true);
 	});
 
 	it('should reuse existing DOM', () => {
@@ -92,6 +108,7 @@ describe('hydrate()', () => {
 			scratch
 		);
 		expect(scratch.innerHTML).to.equal('<p><i>0</i><b>1</b></p>');
+		expect(getLog()).to.deep.equal(['Comment.remove()']);
 	});
 
 	it('should reuse existing DOM when given components', () => {
@@ -458,5 +475,44 @@ describe('hydrate()', () => {
 		scratch.innerHTML = '<p>hello <!-- c -->foo</p>';
 		hydrate(<p>hello {'foo'}</p>, scratch);
 		expect(scratch.innerHTML).to.equal('<p>hello foo</p>');
+		expect(getLog()).to.deep.equal(['Comment.remove()']);
+	});
+
+	it('should skip over multiple comment nodes', () => {
+		scratch.innerHTML = '<p>hello <!-- a --><!-- b -->foo</p>';
+		hydrate(<p>hello {'foo'}</p>, scratch);
+		expect(scratch.innerHTML).to.equal('<p>hello foo</p>');
+		expect(getLog()).to.deep.equal(['Comment.remove()', 'Comment.remove()']);
+	});
+
+	it('should work with error boundaries', () => {
+		scratch.innerHTML = '<div>Hello, World!</div>';
+		class Root extends Component {
+			constructor() {
+				super();
+				this.state = {};
+			}
+
+			componentDidCatch(error) {
+				this.setState({ error });
+			}
+
+			render() {
+				if (!this.state.error) {
+					return <App />;
+				} else {
+					return <div>Error!</div>;
+				}
+			}
+		}
+
+		function App() {
+			throw Error();
+			return createElement('div', {}, 'Hello, World!');
+		}
+
+		hydrate(<Root />, scratch);
+		rerender();
+		expect(scratch.innerHTML).to.equal('<div>Error!</div>');
 	});
 });
